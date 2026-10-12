@@ -2357,13 +2357,20 @@ export async function main(): Promise<void> {
   }
 }
 
+// A reader that closed the pipe early reports EPIPE on Linux and Windows; macOS reports the same thing as ENOTCONN
+// when the socket behind the pipe is already gone.
+export function isClosedPipeError(error: unknown): boolean {
+  const code = (error as NodeJS.ErrnoException | undefined)?.code;
+  return code === "EPIPE" || code === "ENOTCONN";
+}
+
 const isDirectExecution = isMainModule(import.meta.url);
 
 if (isDirectExecution) {
   // `proton-mail-bridge ... | head` closes the pipe early: that is the reader's choice, not an
   // error, so leave quietly. Anything else on stdout is still fatal.
   process.stdout.on("error", (error: NodeJS.ErrnoException) => {
-    if (error.code === "EPIPE") {
+    if (isClosedPipeError(error)) {
       process.exit(0);
     }
     throw error;

@@ -211,3 +211,12 @@ test("every dispatched command has help text and a declared flag list", async ()
     assert.match(text, new RegExp(`Usage: proton-mail-bridge ${command}`));
   }
 });
+
+test("a closed stdout pipe is recognised under both names the platforms use (EPIPE, and ENOTCONN on macOS)", async () => {
+  const { isClosedPipeError } = await import("../dist/cli.js");
+  assert.equal(isClosedPipeError(Object.assign(new Error("write EPIPE"), { code: "EPIPE" })), true);
+  assert.equal(isClosedPipeError(Object.assign(new Error("write ENOTCONN"), { code: "ENOTCONN" })), true);
+  assert.equal(isClosedPipeError(Object.assign(new Error("disk"), { code: "ENOSPC" })), false);
+  assert.equal(isClosedPipeError(new Error("plain")), false);
+  assert.equal(isClosedPipeError(undefined), false);
+});
