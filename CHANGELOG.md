@@ -2,7 +2,7 @@
 
 All notable changes to this project are documented here.
 
-## [Unreleased]
+## [2.8.5] — 2026-10-12
 
 The CLI left quietly when a reader closed the pipe (`... | head`) only for `EPIPE`; on macOS the same thing is sometimes reported as `ENOTCONN`, which was thrown and logged as an uncaught exception. Both are now treated as a closed pipe. Found as an intermittent failure of the macOS CI job.
 
