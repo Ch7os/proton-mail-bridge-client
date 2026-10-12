@@ -143,3 +143,25 @@ test("copied lines carry no control characters, no foreign organizer parameters,
   assert.throws(() => parseInvite(base(["ORGANIZER:mailto:a@b.test", `DTEND:${"2".repeat(5000)}`])), InviteError);
   assert.throws(() => parseInvite(base([`ORGANIZER:mailto:${"a".repeat(400)}@b.test`])), InviteError);
 });
+
+test("a long time zone (Apple lists every historical transition) is kept whole; one beyond the cap is left out, never cut", () => {
+  const zone = (rdates) => ["BEGIN:VTIMEZONE", "TZID:Europe/Berlin", "BEGIN:STANDARD", "DTSTART:18930401T000000", "TZOFFSETFROM:+005328", "TZOFFSETTO:+0100",
+    ...Array.from({ length: rdates }, (_, i) => `RDATE:19${String(10 + (i % 80)).padStart(2, "0")}0401T020000`), "TZNAME:CET", "END:STANDARD", "END:VTIMEZONE"];
+  const invite = (zoneLines) => crlf(["BEGIN:VCALENDAR", "METHOD:REQUEST", ...zoneLines, "BEGIN:VEVENT", "UID:u", "ORGANIZER:mailto:o@x.test",
+    "DTSTART;TZID=Europe/Berlin:20261022T100000", "SUMMARY:s", "END:VEVENT", "END:VCALENDAR"]);
+  const balanced = (ics) => {
+    const stack = [];
+    for (const line of ics.replace(/\r\n /g, "").split("\r\n")) {
+      const m = /^(BEGIN|END):(.+)$/.exec(line);
+      if (!m) continue;
+      if (m[1] === "BEGIN") stack.push(m[2]); else assert.equal(stack.pop(), m[2], `unbalanced at ${line}`);
+    }
+    return stack.length === 0;
+  };
+  const kept = buildInviteReply(parseInvite(invite(zone(80))), { attendeeAddress: "me@x.test", response: "accept" }).ics;
+  assert.ok(balanced(kept));
+  assert.ok(kept.includes("TZNAME:CET") && kept.includes("END:VTIMEZONE"), "an 80-RDATE zone is cut");
+  const dropped = buildInviteReply(parseInvite(invite(zone(1500))), { attendeeAddress: "me@x.test", response: "accept" }).ics;
+  assert.ok(balanced(dropped));
+  assert.ok(!dropped.includes("VTIMEZONE"), "an oversized zone must be left out whole");
+});

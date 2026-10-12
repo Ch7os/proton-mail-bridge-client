@@ -46,7 +46,8 @@ export interface ParsedInvite {
 const MAX_LINES = 20_000;
 const MAX_DEPTH = 8;
 const MAX_TIMEZONES = 4;
-const MAX_TIMEZONE_LINES = 60;
+// Apple writes every historical transition of a zone (Europe/Berlin is over 60 lines), so this is generous.
+const MAX_TIMEZONE_LINES = 1000;
 const MAX_TITLE = 200;
 const TIMEZONE_PROPERTIES = new Set(["TZID", "TZOFFSETFROM", "TZOFFSETTO", "TZNAME", "DTSTART", "RRULE", "RDATE"]);
 const MAX_COPIED_LINE = 500;
@@ -119,6 +120,8 @@ export function parseInvite(text: string): ParsedInvite {
   const event: IcsProperty[] = [];
   const timezones: string[][] = [];
   let timezone: string[] | undefined;
+  // A zone longer than the cap is left out whole: a truncated one (a STANDARD block without its offsets or END) is invalid.
+  let timezoneOverflow = false;
 
   for (const raw of lines) {
     const line = raw.trim();
@@ -127,7 +130,10 @@ export function parseInvite(text: string): ParsedInvite {
     if (marker) {
       const component = marker[2].toUpperCase();
       const begin = marker[1].toUpperCase() === "BEGIN";
-      if (timezone && TIMEZONE_PARTS.has(component) && timezone.length < MAX_TIMEZONE_LINES) timezone.push(`${begin ? "BEGIN" : "END"}:${component}`);
+      if (timezone && TIMEZONE_PARTS.has(component)) {
+        if (timezone.length < MAX_TIMEZONE_LINES) timezone.push(`${begin ? "BEGIN" : "END"}:${component}`);
+        else timezoneOverflow = true;
+      }
       if (begin) {
         if (depth.length >= MAX_DEPTH) throw new InviteError("The calendar attachment is nested too deeply to answer.");
         const insideTimezone = depth.includes("VTIMEZONE");
@@ -136,11 +142,14 @@ export function parseInvite(text: string): ParsedInvite {
           seenEvent = true;
           inFirstEvent = true;
         }
-        if (component === "VTIMEZONE") timezone = [];
+        if (component === "VTIMEZONE") {
+          timezone = [];
+          timezoneOverflow = false;
+        }
       } else {
         if (component === "VEVENT" && inFirstEvent) inFirstEvent = false;
         if (component === "VTIMEZONE" && timezone) {
-          if (timezones.length < MAX_TIMEZONES) timezones.push(["BEGIN:VTIMEZONE", ...timezone, "END:VTIMEZONE"]);
+          if (!timezoneOverflow && timezones.length < MAX_TIMEZONES) timezones.push(["BEGIN:VTIMEZONE", ...timezone, "END:VTIMEZONE"]);
           timezone = undefined;
         }
         const index = depth.lastIndexOf(component);
@@ -151,8 +160,9 @@ export function parseInvite(text: string): ParsedInvite {
     if (timezone && depth.includes("VTIMEZONE")) {
       // Only known time-zone properties, re-emitted from what was parsed, so no foreign line rides along.
       const property = parseProperty(line);
-      if (property && TIMEZONE_PROPERTIES.has(property.name) && timezone.length < MAX_TIMEZONE_LINES) {
-        timezone.push(`${property.name}:${property.value}`);
+      if (property && TIMEZONE_PROPERTIES.has(property.name)) {
+        if (timezone.length < MAX_TIMEZONE_LINES) timezone.push(`${property.name}:${property.value}`);
+        else timezoneOverflow = true;
       }
       continue;
     }

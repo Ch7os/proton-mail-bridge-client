@@ -2,6 +2,10 @@
 
 All notable changes to this project are documented here.
 
+## [2.8.3] — 2026-10-12
+
+Answering an invitation from Apple Calendar (iCloud) sent a cut-off time zone. Apple lists every historical transition of a zone (Europe/Berlin is 61 lines), and the reply kept only the first 60 lines, so its last block ended without its offsets or `END:DAYLIGHT`. The limit is now 1000 lines, and a zone beyond it is left out whole instead of cut. Found by answering a real iCloud invitation; the earlier tests used short zones.
+
 ## [2.8.2] — 2026-10-09
 
 `create_folder`, `rename_folder`, `delete_folder` and `empty_folder` now act on the account you name: with the `<slug>::` prefix `get_folders` shows on a non-primary account's folders (`dawid-piaskowski-pm-me::Folders/Receipts`), or with the `account` argument. They used to read the prefix as part of the folder name and always worked on the primary account, so the call was refused by Bridge. A prefix and an `account` that name different accounts are refused before anything is touched; text that only looks like a prefix stays part of the path. Found while testing folders with accents and three levels of nesting on a real Bridge. Also: the `.dockerignore` build-hygiene test passes when the file is absent (the OSS Scanner checkout has none), and the README links the call for testers.
