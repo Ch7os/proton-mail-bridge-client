@@ -2,7 +2,7 @@
 
 All notable changes to this project are documented here.
 
-## [Unreleased]
+## [2.8.4] — 2026-10-12
 
 `create_folder` no longer leaves parent folders behind when the server refuses the folder itself (a name that is too long, for example): the parents that call created are removed, and ones that already existed are left alone. `respond_to_invite` no longer warns that the organizer is not the sender for an iCloud invitation: Apple's organizer is an address at its iMIP relay (`imip.me.com`) and the message comes from `noreply@email.apple.com`, and a reply to that address goes to Apple itself.
 
