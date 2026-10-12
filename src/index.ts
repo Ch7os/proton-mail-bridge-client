@@ -121,6 +121,11 @@ const ALL_EMAIL_ACTIONS: EmailAction[] = [
 ];
 
 // Triage and statistics tools cover every configured account unless told which one.
+// Calendar providers that route replies through their own gateway: the organizer in an iCloud invitation is an
+// address at Apple's iMIP relay, while the message comes from noreply@email.apple.com. A reply to such an address
+// goes to the provider itself, so the organizer/sender mismatch warning is not raised for it.
+const CALENDAR_RELAY_DOMAINS = new Set(["imip.me.com"]);
+
 const ACCOUNT_FILTER_PROPERTY = {
   type: "string",
   description: "Only this account (its address or slug). Without it the tool covers every configured account.",
@@ -5243,7 +5248,7 @@ export function createServer(
           ensureOutboundRecipientsAllowed(config.runtime, inviteSendBundle.config.smtp.username, inviteTo);
           const senderDomains = (inviteDetail.from ?? []).map((entry) => (entry.address ?? "").split("@").pop()?.toLowerCase());
           const organizerDomain = invite.organizer.address.split("@").pop()?.toLowerCase();
-          const organizerMismatch = !senderDomains.includes(organizerDomain);
+          const organizerMismatch = !senderDomains.includes(organizerDomain) && !CALENDAR_RELAY_DOMAINS.has(organizerDomain ?? "");
           const inviteSummary = {
             event: invite.summary ?? "(no title)",
             ...(organizerMismatch

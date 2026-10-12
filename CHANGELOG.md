@@ -2,6 +2,10 @@
 
 All notable changes to this project are documented here.
 
+## [Unreleased]
+
+`create_folder` no longer leaves parent folders behind when the server refuses the folder itself (a name that is too long, for example): the parents that call created are removed, and ones that already existed are left alone. `respond_to_invite` no longer warns that the organizer is not the sender for an iCloud invitation: Apple's organizer is an address at its iMIP relay (`imip.me.com`) and the message comes from `noreply@email.apple.com`, and a reply to that address goes to Apple itself.
+
 ## [2.8.3] — 2026-10-12
 
 Answering an invitation from Apple Calendar (iCloud) sent a cut-off time zone. Apple lists every historical transition of a zone (Europe/Berlin is 61 lines), and the reply kept only the first 60 lines, so its last block ended without its offsets or `END:DAYLIGHT`. The limit is now 1000 lines, and a zone beyond it is left out whole instead of cut. Found by answering a real iCloud invitation; the earlier tests used short zones.

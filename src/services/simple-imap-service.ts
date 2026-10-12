@@ -792,6 +792,19 @@ export function mapHeaderValue(value: unknown): unknown {
   );
 }
 
+// The ancestors of a folder path ("A/B/C" -> "A", "A/B") that are not in `known`. The top-level "Folders" and
+// "Labels" containers are never counted: they are part of every Proton mailbox.
+function missingParents(path: string, known: Set<string>): string[] {
+  const parts = path.split("/");
+  const missing: string[] = [];
+  for (let depth = 1; depth < parts.length; depth += 1) {
+    const ancestor = parts.slice(0, depth).join("/");
+    if (depth === 1 && (ancestor === "Folders" || ancestor === "Labels")) continue;
+    if (!known.has(ancestor)) missing.push(ancestor);
+  }
+  return missing;
+}
+
 export class SimpleIMAPService {
   private client?: ImapFlow;
   private folderCache?: FolderInfo[];
@@ -1334,16 +1347,27 @@ export class SimpleIMAPService {
       throw new Error("Folder path is required.");
     }
 
-    const response = await this.mutateFolderWithReconnectCheck(
-      async () => {
-        const client = await this.ensureConnected();
-        return client.mailboxCreate(trimmed);
-      },
-      (folders) => {
-        const existing = folders.find((entry) => entry.path === trimmed);
-        return existing ? { path: existing.path, created: true } : undefined;
-      },
-    );
+    // The server creates a missing parent along with the folder. If the folder itself is then refused (a name that
+    // is too long, say) the parent would be left behind, so the parents this call is about to create are noted.
+    const known = new Set((await this.getFolders().catch(() => [])).map((entry) => entry.path));
+    const parents = known.size === 0 ? [] : missingParents(trimmed, known);
+
+    let response: { path: string; created?: boolean };
+    try {
+      response = await this.mutateFolderWithReconnectCheck(
+        async () => {
+          const client = await this.ensureConnected();
+          return client.mailboxCreate(trimmed);
+        },
+        (folders) => {
+          const existing = folders.find((entry) => entry.path === trimmed);
+          return existing ? { path: existing.path, created: true } : undefined;
+        },
+      );
+    } catch (error) {
+      await this.removeCreatedParents(parents);
+      throw error;
+    }
 
     this.folderCache = undefined;
     this.folderStructureCache = undefined;
@@ -1351,6 +1375,23 @@ export class SimpleIMAPService {
     const folder = folders.find((entry) => entry.path === response.path);
 
     return { path: response.path, created: response.created !== false, folder };
+  }
+
+  // Removes parents a failed createFolder left behind, deepest first. They were absent before the call, so they are
+  // empty; whatever cannot be removed is left alone.
+  private async removeCreatedParents(parents: string[]): Promise<void> {
+    if (parents.length === 0) return;
+    this.folderCache = undefined;
+    this.folderStructureCache = undefined;
+    const now = new Set((await this.getFolders(true).catch(() => [])).map((entry) => entry.path));
+    for (const parent of [...parents].reverse()) {
+      if (!now.has(parent)) continue;
+      try {
+        await this.deleteFolder(parent);
+      } catch {
+        // Not removable (or already gone): nothing more to do for a leftover empty folder.
+      }
+    }
   }
 
   async renameFolder(path: string, newPath: string): Promise<{

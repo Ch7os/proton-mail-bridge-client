@@ -176,3 +176,15 @@ test("the real message carries the calendar reply as a text/calendar; method=REP
   assert.match(raw, /Content-Type: application\/ics; name=invite\.ics/);
   assert.match(raw, /METHOD:REPLY/);
 });
+
+test("the organizer/sender warning is raised for a stranger, not for Apple's own iMIP relay", async () => {
+  await withServer({}, async ({ call, mailbox }) => {
+    mailbox.ics = ics("owner@example.com").replace("anna@corp.example", "boss@elsewhere.example");
+    const stranger = await call("respond_to_invite", { emailId: "INBOX::1", response: "accept", dryRun: true });
+    assert.match(stranger.json?.warning ?? "", /not the sender/);
+    mailbox.ics = ics("owner@example.com").replace("anna@corp.example", "2_TOKEN@imip.me.com");
+    const apple = await call("respond_to_invite", { emailId: "INBOX::1", response: "accept", dryRun: true });
+    assert.equal(apple.json?.warning, undefined, JSON.stringify(apple.json));
+    assert.equal(apple.json?.wouldSendTo?.[0], "2_TOKEN@imip.me.com");
+  });
+});
