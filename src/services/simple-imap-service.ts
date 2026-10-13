@@ -577,8 +577,7 @@ export function planFolderSync(input: {
   }
 
   if (
-    !input.checkpoint ||
-    !input.checkpoint.highestUid ||
+    !input.checkpoint?.highestUid ||
     (input.checkpoint.uidValidity && input.uidValidity && input.checkpoint.uidValidity !== input.uidValidity)
   ) {
     return {
@@ -1545,6 +1544,7 @@ export class SimpleIMAPService {
     const offset = normalizeLimit(input.offset, 0, 0, 10_000);
 
     return this.withMailbox(folder, true, async (client) => {
+      // biome-ignore lint/complexity/useOptionalChain: ImapFlow returns `false`, not undefined; `?.` does not type-check on it
       const total = client.mailbox && client.mailbox.exists ? client.mailbox.exists : 0;
       if (total === 0 || offset >= total) {
         return { folder, total, limit, offset, emails: [] };
@@ -4171,6 +4171,7 @@ export class SimpleIMAPService {
         // assertMailboxUidValidity's own `if (!expectedUidValidity) return`.
         this.assertMailboxUidValidity(client, expectedUidValidity);
         const message = await client.fetchOne(String(uid), FETCH_DETAIL_QUERY, { uid: true });
+        // biome-ignore lint/complexity/useOptionalChain: ImapFlow returns `false`, not undefined; `?.` does not type-check on it
         if (!message || !message.source) {
           throw new Error(`Email not found for id ${emailId}`);
         }
@@ -4833,6 +4834,7 @@ export class SimpleIMAPService {
       // assertMailboxUidValidity's own `if (!expectedUidValidity) return`.
       this.assertMailboxUidValidity(client, expectedUidValidity);
       const message = await client.fetchOne(String(uid), { uid: true, source: true }, { uid: true });
+      // biome-ignore lint/complexity/useOptionalChain: ImapFlow returns `false`, not undefined; `?.` does not type-check on it
       if (!message || !message.source) {
         throw new Error(`Email not found for id ${emailId}`);
       }

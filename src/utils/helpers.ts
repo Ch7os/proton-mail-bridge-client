@@ -237,7 +237,7 @@ export function previewText(value?: string, maxLength = 220): string | undefined
 // One anchored, non-nested pattern: it can only start at a literal "data:" and its character
 // class excludes "[" so a run of brackets cannot restart it. The previous bracket-first regexes
 // were quadratic on hostile input (a 240 KB body of "[data:" took ~20 s on the event loop).
-const DATA_URI = /\[?data:[^\s\[\]()"'<>]*\]?/gi;
+const DATA_URI = /\[?data:[^\s[\]()"'<>]*\]?/gi;
 
 // Replaces data: URIs in text derived from mail: "[data:...]" (html-to-text's rendering of an
 // alt-less <img>) becomes "[image]", a bare one "[data]". Long http(s) links are left alone.
@@ -1114,7 +1114,7 @@ export function classifyAttachment(input: {
   if (isSignature) {
     return { kind: "signature", isCalendarInvite: false, isSignature: true };
   }
-  if (contentType.startsWith("image/") || /\.(png|jpe?g|gif|webp|svg)$/i.test(filename) || Boolean(cid)) {
+  if (contentType.startsWith("image/") || /\.(png|jpe?g|gif|webp|svg)$/i.test(filename) || cid) {
     return { kind: "image", isCalendarInvite: false, isSignature: false };
   }
   if (contentType === "message/rfc822" || filename.endsWith(".eml") || filename.endsWith(".msg")) {
@@ -1274,8 +1274,15 @@ export function normalizeMailboxLabel(value?: string): string | undefined {
  * blockquotes, and horizontal rules.
  */
 export function renderMarkdown(markdown: string): { html: string; text: string } {
+  // Quotes too: this is the one escape used for text that can end up inside an attribute (a link's href), so it
+  // must not depend on the URL being escaped again later.
   function escHtml(s: string): string {
-    return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+    return s
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#39;");
   }
 
   // Protect fenced code blocks from inline processing
@@ -1293,7 +1300,7 @@ export function renderMarkdown(markdown: string): { html: string; text: string }
   });
 
   // Escape remaining HTML
-  html = html.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  html = escHtml(html);
 
   // Process block-level elements line by line
   const lines = html.split("\n");

@@ -2,6 +2,10 @@
 
 All notable changes to this project are documented here.
 
+## [Unreleased]
+
+`npm run lint` now runs a linter. It was `tsc --noEmit`, which is the type check and nothing else. It is Biome (`biome.jsonc`) followed by the type check, so `release:check` and CI get both; ESLint was not an option because `typescript-eslint` does not support TypeScript 7. The first run found nothing that changed behavior; it removed a few redundant null checks and moved two `hasOwnProperty` calls to `Object.hasOwn`. The escape that `renderMarkdown` uses for text that can land inside an attribute now covers quotes as well, so a link's `href` no longer depends on a second escape later in the pipeline (it was already safe: the URL was escaped separately). Both ideas came from review of a fork by Michal Ferber (MichalAFerber/proton-mail-bridge-client).
+
 ## [2.8.5] — 2026-10-12
 
 The CLI left quietly when a reader closed the pipe (`... | head`) only for `EPIPE`; on macOS the same thing is sometimes reported as `ENOTCONN`, which was thrown and logged as an uncaught exception. Both are now treated as a closed pipe. Found as an intermittent failure of the macOS CI job.

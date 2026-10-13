@@ -54,6 +54,7 @@ function parseCliArgs(argv: string[]): { configPath?: string; serverName?: strin
         options.json = true;
         break;
       case "--help":
+      // biome-ignore lint/suspicious/noFallthroughSwitchClause: process.exit() never returns
       case "-h":
         process.stdout.write(
           [

@@ -82,6 +82,7 @@ function parseCliArgs(argv: string[]): InstallOptions {
         options.includeEnv = false;
         break;
       case "--help":
+      // biome-ignore lint/suspicious/noFallthroughSwitchClause: process.exit() never returns
       case "-h":
         printHelp();
         process.exit(0);

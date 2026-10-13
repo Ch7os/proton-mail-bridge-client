@@ -43,7 +43,7 @@ function escapeHtmlValue(value: string): string {
 
 export function renderTemplateText(text: string, variables: Record<string, string>, options: { escapeHtml?: boolean } = {}): string {
   return text.replace(VARIABLE_PATTERN, (full, name) => {
-    if (!Object.prototype.hasOwnProperty.call(variables, name)) return full;
+    if (!Object.hasOwn(variables, name)) return full;
     const value = variables[name];
     return options.escapeHtml ? escapeHtmlValue(value) : value;
   });
@@ -136,7 +136,7 @@ export class TemplateService {
     // widened would not list {{imię}} or {{order.id}}, and they would be neither filled in nor reported.
     const names = new Set([...extractTemplateVariables(template.subject), ...extractTemplateVariables(template.body)]);
     const missingVariables = [...names].filter(
-      (name) => !Object.prototype.hasOwnProperty.call(variables, name),
+      (name) => !Object.hasOwn(variables, name),
     );
     return {
       // The subject is a mail header, not HTML. The body of an HTML template gets HTML-escaped values, so a

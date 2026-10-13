@@ -315,7 +315,7 @@ export class DraftStoreService {
     await this.withLock(async () => {
       const store = await this.loadUnlocked();
       const existing = ownRecord(store.drafts, id);
-      if (!existing || existing.status !== "sending") {
+      if (existing?.status !== "sending") {
         return;
       }
 

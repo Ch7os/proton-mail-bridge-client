@@ -1,0 +1,33 @@
+{
+	"$schema": "https://biomejs.dev/schemas/2.5.15/schema.json",
+	// Lint only: formatting and import sorting are not enforced here (tsc already checks types; `npm run lint` runs both).
+	"files": { "includes": ["src/**/*.ts", "scripts/**/*.mjs"] },
+	"formatter": { "enabled": false },
+	"assist": { "enabled": false },
+	"linter": {
+		"enabled": true,
+		"rules": {
+			"preset": "recommended",
+			"suspicious": {
+				// Stripping control characters from untrusted headers and invitations is deliberate (see ical-reply.ts, helpers.ts).
+				"noControlCharactersInRegex": "off",
+				// `while ((match = re.exec(text)))` is the standard way to walk matches.
+				"noAssignInExpressions": "off",
+				// Help text that shows ${VARIABLE} on purpose.
+				"noTemplateCurlyInString": "off",
+				// `let x;` followed by an assignment is typed by TypeScript's control-flow analysis (strict is on).
+				"noImplicitAnyLet": "off"
+			},
+			"style": {
+				// Taste, not defects.
+				"useTemplate": "off",
+				"useImportType": "off",
+				"noNonNullAssertion": "off",
+				"useExponentiationOperator": "off"
+			},
+			"complexity": {
+				"useLiteralKeys": "off"
+			}
+		}
+	}
+}

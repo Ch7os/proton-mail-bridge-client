@@ -227,7 +227,7 @@ export class DeliveryQueueService {
       const claimed = await this.withLock(async () => {
         const store = await this.loadUnlocked();
         const record = ownRecord(store.items, id);
-        if (!record || record.status !== "pending") return undefined;
+        if (record?.status !== "pending") return undefined;
         record.status = "sending";
         // Tag the claim with this process's identity — see the ownerPid
         // comment on DeliveryQueueRecord and recoverInterruptedSends() below
