@@ -8,6 +8,7 @@ Only the latest release on [npm](https://www.npmjs.com/package/proton-mail-bridg
 
 Please report vulnerabilities privately, not in a public issue or pull request.
 
+- **GitHub:** the repository's [Security tab](https://github.com/googlarz/proton-mail-bridge-client/security/advisories/new) (private vulnerability reporting).
 - **Email:** googlarz@gmail.com, with the subject `SECURITY: proton-mail-bridge-client`.
 - Include the version (`proton-mail-bridge-client version`), what you did, what you expected and what happened, and the impact you see. A reproducing input helps most.
 
