@@ -2,7 +2,7 @@
 
 All notable changes to this project are documented here.
 
-## [Unreleased]
+## [2.9.0] — 2026-10-14
 
 New: **`PROTONMAIL_MODE`** (`read-only`, `drafts`, `assisted`, `full`) sets the safety flags in one go. It only sets where they start; any flag set explicitly still wins, an unknown value is an error that lists the valid ones, and `get_runtime_status` shows the mode in force. **MCP prompts**: the server now offers seven ready-made workflows (*Morning brief*, *Who is waiting on me*, *Waiting on others*, *Prepare for a meeting*, *Answer calendar invitations*, *Clean up newsletters*, *Draft replies*); each only instructs the assistant and asks before sending or changing anything. **`schedule`** prints the launchd, systemd, cron or Windows task definition that runs `digest` every day, with the commands to switch it on and off; it installs nothing and keeps the password in a file, not in the definition. Also: a step-by-step install guide for people who do not use a terminal (`docs/install-for-non-developers.md`).
 
