@@ -78,7 +78,7 @@ test("a quoted parameter that contains a colon does not cut the value in the wro
 });
 
 test("escaped characters in text values are unescaped", () => {
-  const ics = wrap(vevent("SUMMARY:Lunch\\, then review\; notes", "LOCATION:Room 4\\nFloor 2", "DTSTART:20261012T170000Z"));
+  const ics = wrap(vevent("SUMMARY:Lunch\\, then review; notes", "LOCATION:Room 4\\nFloor 2", "DTSTART:20261012T170000Z"));
   assert.equal(summarizeCalendarText(ics), "Lunch, then review; notes | Starts 20261012T170000Z | Location Room 4 Floor 2");
 });
 

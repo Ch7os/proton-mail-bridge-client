@@ -27,7 +27,7 @@ function service({ searchResult = [], searchThrows } = {}) {
   const client = {
     mailbox: { uidValidity: 100n },
     search: async () => { if (searchThrows) throw searchThrows; return searchResult; },
-    append: async (folder, raw, flags, internalDate) => { appended.push({ folder, flags, internalDate }); return { uid: 7 }; },
+    append: async (folder, _raw, flags, internalDate) => { appended.push({ folder, flags, internalDate }); return { uid: 7 }; },
   };
   svc.withMailbox = async (_folder, _ro, action) => action(client);
   svc.ensureConnected = async () => client;

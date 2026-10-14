@@ -1,7 +1,7 @@
 {
 	"$schema": "https://biomejs.dev/schemas/2.5.15/schema.json",
 	// Lint only: formatting and import sorting are not enforced here (tsc already checks types; `npm run lint` runs both).
-	"files": { "includes": ["src/**/*.ts", "scripts/**/*.mjs"] },
+	"files": { "includes": ["src/**/*.ts", "scripts/**/*.mjs", "test/**/*.mjs"] },
 	"formatter": { "enabled": false },
 	"assist": { "enabled": false },
 	"linter": {

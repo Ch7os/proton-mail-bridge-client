@@ -14,7 +14,7 @@ function service(folders = []) {
   });
   const deleted = [];
   svc.getFolders = async () => folders;
-  svc.mutateFolderWithReconnectCheck = async (action) => { deleted.push("called"); return { path: "x" }; };
+  svc.mutateFolderWithReconnectCheck = async (_action) => { deleted.push("called"); return { path: "x" }; };
   return { svc, deleted };
 }
 
@@ -45,7 +45,7 @@ function renameService(folders = []) {
   const { svc } = service(folders);
   const calls = [];
   svc.ensureConnected = async () => ({ mailboxRename: async (from, to) => { calls.push([from, to]); return { path: from, newPath: to }; } });
-  svc.mutateFolderWithReconnectCheck = async (action) => { calls.push("reached the server"); return { path: "x", newPath: "y" }; };
+  svc.mutateFolderWithReconnectCheck = async (_action) => { calls.push("reached the server"); return { path: "x", newPath: "y" }; };
   return { svc, calls };
 }
 

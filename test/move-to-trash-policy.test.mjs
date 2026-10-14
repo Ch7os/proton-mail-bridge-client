@@ -13,9 +13,6 @@ net.Socket.prototype.connect = () => { throw new Error("Network disabled in this
 
 // Moving a message into the Trash folder is trashing it. A list of allowed actions that leaves out "trash" must
 // stop every tool that can move there, not only trash_email.
-const thread = (n) => ({ id: `t${n}`, subject: `s${n}`, score: 100 - n, latestDate: `2026-09-${String(30 - (n % 28)).padStart(2, "0")}T00:00:00Z`, messageCount: 1 });
-const TOP = Array.from({ length: 25 }, (_, i) => thread(i));
-const STALE = Array.from({ length: 4 }, (_, i) => thread(100 + i));
 
 
 async function withServer(allowedActions, fn) {

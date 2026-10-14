@@ -227,7 +227,7 @@ test("Finding 1: a scheduled send holding SMTP mid-flight blocks a concurrent ma
     );
 
     const manualResult = await manualAttempt;
-    assert.ok(manualResult && manualResult.rejected, "the manual send_draft must be rejected, not silently queued or duplicated");
+    assert.ok(manualResult?.rejected, "the manual send_draft must be rejected, not silently queued or duplicated");
     assert.match(manualResult.error.message, /not sendable|already sent/i);
 
     scheduledSmtp.release();

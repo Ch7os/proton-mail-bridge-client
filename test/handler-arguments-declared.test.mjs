@@ -26,7 +26,7 @@ test("no tool handler reads an argument that its schema does not declare", async
   await server.close();
 
   const body = source.slice(source.indexOf("withIgnoredArgumentsNote(async (request) => {"));
-  const cases = [...body.matchAll(/\n        case "([a-z_]+)":/g)];
+  const cases = [...body.matchAll(/\n {8}case "([a-z_]+)":/g)];
   assert.ok(cases.length >= 90, `found only ${cases.length} cases`);
   const problems = [];
   for (let i = 0; i < cases.length; i += 1) {

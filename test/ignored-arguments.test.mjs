@@ -12,9 +12,6 @@ import { closeTrackedIndexes } from "./helpers/close-indexes.mjs";
 net.Socket.prototype.connect = () => { throw new Error("Network disabled in this test file"); };
 
 // An argument a tool does not declare is ignored, and the result says so.
-const thread = (n) => ({ id: `t${n}`, subject: `s${n}`, score: 100 - n, latestDate: `2026-09-${String(30 - (n % 28)).padStart(2, "0")}T00:00:00Z`, messageCount: 1 });
-const TOP = Array.from({ length: 25 }, (_, i) => thread(i));
-const STALE = Array.from({ length: 4 }, (_, i) => thread(100 + i));
 
 async function withServer(fn) {
   const dataDir = await mkdtemp(join(tmpdir(), "digest-paging-"));

@@ -39,7 +39,7 @@ test("binary data labelled as text is not returned as a wall of replacement char
 test("text with a few stray invalid bytes is still text", () => {
   const text = Buffer.concat([Buffer.from("A normal sentence of reasonable length. ".repeat(20), "utf8"), Buffer.from([0xff]), Buffer.from(" and more text.", "utf8")]);
   const decoded = decodeAttachmentText(text);
-  assert.ok(decoded && decoded.startsWith("A normal sentence"));
+  assert.ok(decoded?.startsWith("A normal sentence"));
 });
 
 test("the service uses the attachment's declared charset", () => {

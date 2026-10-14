@@ -36,7 +36,7 @@ async function withServer({ addresses = ["owner@example.com"], runtime = {} } = 
   const { server, accountManager } = createServer(config, { startBackgroundSync: false });
   const sent = [];
   const bundles = accountManager.all();
-  bundles.forEach((bundle, index) => {
+  bundles.forEach((bundle, _index) => {
     bundle.smtpService.sendEmail = async (payload) => { sent.push({ via: bundle.account.address, payload }); return { messageId: "<sent@example.com>", accepted: payload.to, rejected: [], response: "250 OK" }; };
     bundle.imapService.getFolderStats = async () => { throw new Error("no bridge"); };
     // The sent-copy check after a send looks in Sent; there is no Bridge here.

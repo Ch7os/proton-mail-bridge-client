@@ -65,7 +65,7 @@ function createFakeClient(state) {
       };
       return { release: () => {} };
     },
-    async status(folder) {
+    async status(_folder) {
       return { uidValidity: state.uidValidity, uidNext: state.uidNext, messages: state.messages.size };
     },
     async fetchOne(range) {
@@ -83,7 +83,7 @@ function createFakeClient(state) {
       if (query && typeof query.uid === "string") {
         return query.uid.split(",").map(Number).filter((uid) => state.messages.has(uid));
       }
-      if (query && query.all) {
+      if (query?.all) {
         return [...state.messages.keys()];
       }
       return [];
@@ -177,7 +177,7 @@ test("update_message_labels: an OLD-FORMAT id still works (no new error introduc
   service.client.fetchOne = async (range, query) => {
     const uid = Number(range);
     if (!state.messages.has(uid)) return false;
-    if (query && query.envelope) {
+    if (query?.envelope) {
       return { uid, envelope: { messageId: "<msg-1@example.com>" } };
     }
     return { uid };
@@ -563,7 +563,7 @@ test("bulk_update_labels: resolution and execution under the SAME generation —
   service.client.fetchOne = async (range, query) => {
     const uid = Number(range);
     if (!state.messages.has(uid)) return false;
-    if (query && query.envelope) {
+    if (query?.envelope) {
       return { uid, envelope: { messageId: "<msg-1@example.com>" } };
     }
     return { uid };
@@ -729,12 +729,12 @@ function createThreadFakeClient(state) {
     usable: true,
     capabilities: new Set(["UIDPLUS"]),
     mailbox: false,
-    async getMailboxLock(folder) {
+    async getMailboxLock(_folder) {
       this.mailbox = { uidValidity: state.uidValidity, exists: state.messages.size, uidNext: state.uidNext };
       return { release: () => {} };
     },
     async search(query) {
-      if (query && query.header && query.header["Message-ID"]) {
+      if (query?.header?.["Message-ID"]) {
         const found = [...state.messages.keys()];
         // Simulates the mailbox being recreated (generation bumps 1 -> 2) in
         // the real gap between resolveThreadUids capturing this match's

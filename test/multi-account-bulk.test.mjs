@@ -68,7 +68,7 @@ function createFakeClient(state) {
     usable: true,
     capabilities: new Set(["UIDPLUS"]),
     mailbox: false,
-    async getMailboxLock(folder) {
+    async getMailboxLock(_folder) {
       this.mailbox = { uidValidity: state.uidValidity, exists: state.messages.size, uidNext: state.uidNext };
       return { release: () => {} };
     },

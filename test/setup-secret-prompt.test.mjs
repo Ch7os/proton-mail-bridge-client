@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { PassThrough, Writable } from "node:stream";
+import { PassThrough } from "node:stream";
 import { createInterface } from "node:readline/promises";
 import { createMutableOutput, promptSecret, readlineTerminalMode } from "../dist/scripts/setup-claude-desktop.js";
 

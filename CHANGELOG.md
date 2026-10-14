@@ -2,6 +2,10 @@
 
 All notable changes to this project are documented here.
 
+## [Unreleased]
+
+The linter now covers `test/` as well as `src/` and `scripts/`. It found no defect: unused imports, parameters and two dead test helpers, and a few `a && a.b` that read better as `a?.b`. `SECURITY.md` names GitHub private vulnerability reporting, which is now enabled for the repository.
+
 ## [2.8.6] — 2026-10-13
 
 `npm run lint` now runs a linter. It was `tsc --noEmit`, which is the type check and nothing else. It is Biome (`biome.jsonc`) followed by the type check, so `release:check` and CI get both; ESLint was not an option because `typescript-eslint` does not support TypeScript 7. The first run found nothing that changed behavior; it removed a few redundant null checks and moved two `hasOwnProperty` calls to `Object.hasOwn`. The escape that `renderMarkdown` uses for text that can land inside an attribute now covers quotes as well, so a link's `href` no longer depends on a second escape later in the pipeline (it was already safe: the URL was escaped separately). Both ideas came from review of a fork by Michal Ferber (MichalAFerber/proton-mail-bridge-client).

@@ -136,7 +136,7 @@ test("batch_email_action with continueOnError:false names the ids it never tried
 test("batch_email_action with the default continueOnError tries everything and reports no unattempted ids", async () => {
   await withServer(async (client, imapService) => {
     const ids = [createEmailId("INBOX", 1, "114504891"), createEmailId("INBOX", 2, "114504891")];
-    imapService.markEmailRead = async (emailId) => { throw new Error("boom"); };
+    imapService.markEmailRead = async (_emailId) => { throw new Error("boom"); };
     const result = await client.callTool({ name: "batch_email_action", arguments: { emailIds: ids, action: "mark_read" } });
     const body = JSON.parse(result.content[0].text);
     assert.equal(body.failed, 2);

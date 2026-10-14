@@ -430,7 +430,7 @@ test("getEmailById resolves real Proton labels instead of always reporting an em
   service.connect = async () => {
     service.client = fakeClient;
   };
-  service.withMailbox = async (folder, readOnly, action) => {
+  service.withMailbox = async (folder, _readOnly, action) => {
     fakeClient.mailbox = { path: folder };
     return action(fakeClient);
   };
@@ -1182,7 +1182,7 @@ function createServiceForAttachmentTest(dataDir, raw) {
   service.connect = async () => {
     service.client = fakeClient;
   };
-  service.withMailbox = async (folder, readOnly, action) => {
+  service.withMailbox = async (folder, _readOnly, action) => {
     fakeClient.mailbox = { path: folder };
     return action(fakeClient);
   };
@@ -1286,7 +1286,7 @@ function makeSearchFakeClient(messages) {
         // by date) never requests `labels`; the full summary/detail fetch does —
         // use that to distinguish header-only calls from bounded full-detail
         // fetch batches for the batching assertion below.
-        const isHeaderOnly = !query || query.labels !== true;
+        const isHeaderOnly = query?.labels !== true;
         fetchCalls.push({ uids: [...uids], isHeaderOnly });
         for (const uid of uids) {
           const m = byUid.get(uid);

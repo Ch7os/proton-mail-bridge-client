@@ -14,7 +14,7 @@ function service({ existing, failWith }) {
   const server = new Set(existing);
   const deleted = [];
   svc.getFolders = async () => [...server].map((path) => ({ path }));
-  svc.mutateFolderWithReconnectCheck = async (action) => {
+  svc.mutateFolderWithReconnectCheck = async (_action) => {
     if (failWith) {
       // The server made the parents, then refused the folder itself.
       server.add("Folders/a");

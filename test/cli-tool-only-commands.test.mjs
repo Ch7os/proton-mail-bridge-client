@@ -42,7 +42,7 @@ test("every TOOL_ONLY_COMMANDS entry references a real MCP tool name", async () 
 });
 
 test("every TOOL_ONLY_COMMANDS entry has a non-empty help string", () => {
-  const missingHelp = TOOL_ONLY_COMMANDS.filter((entry) => !entry.help || !entry.help.trim());
+  const missingHelp = TOOL_ONLY_COMMANDS.filter((entry) => !entry.help?.trim());
   assert.deepEqual(missingHelp, []);
 });
 

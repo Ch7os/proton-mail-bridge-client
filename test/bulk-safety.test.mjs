@@ -19,7 +19,7 @@ function withStubbedMailbox(svc, { uids = [1, 2, 3, 4, 5], validities = ["100"] 
   const searches = [];
   const deleted = [];
   let opened = 0;
-  svc.withMailbox = async (folder, readOnly, action) => {
+  svc.withMailbox = async (folder, _readOnly, action) => {
     const validity = validities[Math.min(opened, validities.length - 1)];
     opened += 1;
     const client = {
