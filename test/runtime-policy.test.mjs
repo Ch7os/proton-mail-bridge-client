@@ -56,6 +56,7 @@ test("allowed actions are enforced explicitly", () => {
 test("sanitized runtime config excludes secrets and preserves policy flags", () => {
   const runtime = createRuntime({ allowSend: false, autoSyncFolder: "Archive" });
   assert.deepEqual(sanitizeRuntimeConfig(runtime), {
+    mode: null,
     readOnly: false,
     allowSend: false,
     allowRemoteDraftSync: true,

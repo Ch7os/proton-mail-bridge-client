@@ -206,6 +206,24 @@ proton-mail-bridge-client sync --folder INBOX --limit 150
 proton-mail-bridge-client sync --folder INBOX --full
 ```
 
+## Scheduled digest
+
+`schedule` prints what your system's own scheduler needs to run `digest` every day, and the commands to switch it on and off. It installs nothing and writes nothing.
+
+```bash
+proton-mail-bridge-client schedule                       # 08:00, for your system (launchd, systemd or Windows tasks)
+proton-mail-bridge-client schedule --at 07:30 --system cron --output ~/brief.txt
+```
+
+| Flag | Meaning |
+|---|---|
+| `--at HH:MM` | Time of day, 24-hour (default `08:00`) |
+| `--system` | `launchd` (macOS default), `systemd` (Linux default), `cron`, `schtasks` (Windows default) |
+| `--output <file>` | Where each run writes the digest (default `~/proton-mail-brief.txt`) |
+| `--password-file <file>` | A file holding your Bridge password, mode 600 (default `~/.proton-mail-bridge-password`) |
+
+The password is never written into the scheduler definition: the job reads it from the file through `PROTONMAIL_PASSWORD_FILE`. The job uses absolute paths to this Node and this CLI, so a scheduler's minimal `PATH` does not matter; if you move or upgrade the install, run `schedule` again.
+
 ## Shell completion
 
 ```bash

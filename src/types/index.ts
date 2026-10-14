@@ -536,7 +536,11 @@ export interface LocalIndexStatus {
   }>;
 }
 
+export type SafetyMode = "read-only" | "drafts" | "assisted" | "full";
+
 export interface ProtonRuntimeConfig {
+  /** The PROTONMAIL_MODE preset the flags below started from, when one was set. */
+  mode?: SafetyMode;
   readOnly: boolean;
   allowSend: boolean;
   allowRemoteDraftSync: boolean;

@@ -3,6 +3,7 @@ import { isSelfAddress } from "./helpers.js";
 
 export function sanitizeRuntimeConfig(runtime: ProtonRuntimeConfig): Record<string, unknown> {
   return {
+    mode: runtime.mode ?? null,
     readOnly: runtime.readOnly,
     allowSend: runtime.allowSend,
     allowRemoteDraftSync: runtime.allowRemoteDraftSync,

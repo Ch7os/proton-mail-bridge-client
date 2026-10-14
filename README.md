@@ -32,6 +32,8 @@ Give Claude Desktop (or Cline, or any MCP client) full access to your Proton Mai
 
 ## Quick start (2 minutes)
 
+> **No terminal?** Follow the [step-by-step guide](docs/install-for-non-developers.md) instead.
+
 1. **Install and sign in to [Proton Mail Bridge](https://proton.me/mail/bridge)**, and leave it running. In the Bridge app, open your account and copy the **Bridge password** (it is not your Proton password).
 2. **Connect Claude Desktop**, either way:
    - **Bundle:** download the `proton-mail-bridge-client-<your-os>.mcpb` for macOS (`darwin-arm64` Apple silicon, `darwin-x64` Intel), Linux (`linux-x64`, `linux-arm64`) or Windows (`win32-x64`) from the [latest release](https://github.com/googlarz/proton-mail-bridge-client/releases/latest) and open it. Claude Desktop asks for your Proton address and the Bridge password, plus optional settings (Bridge IMAP/SMTP host and port, read-only, allow sending, signature, extra accounts, data and download folders, tool tier); the defaults match a standard Bridge install.
@@ -392,6 +394,8 @@ Output:
 
 More recipes — expanded triage prompts, cron scripts for scheduled digests, and a Claude Code `/mail-triage` slash command — are in [examples/](examples/).
 
+**Ready-made workflows.** The server offers seven prompts that clients can show as menu items: *Morning brief*, *Who is waiting on me*, *Waiting on others*, *Prepare for a meeting*, *Answer calendar invitations*, *Clean up newsletters* and *Draft replies*. Each only instructs the assistant and says to ask before sending or changing anything. To get a digest written to a file every morning without opening Claude, see `proton-mail-bridge-client schedule` in [docs/cli.md](docs/cli.md#scheduled-digest).
+
 ---
 
 ## Recommended System Prompt
@@ -433,6 +437,19 @@ All commands support `--json` for machine-readable output, and any MCP tool is d
 ---
 
 ## Safety controls
+
+### One switch: `PROTONMAIL_MODE`
+
+If you would rather not combine the flags below yourself, pick how much the assistant may do:
+
+| `PROTONMAIL_MODE` | Reads | Drafts | Flags (read, star) | Archive, trash, move | Send | Permanent delete |
+|---|---|---|---|---|---|---|
+| `read-only` | yes | no | no | no | no | no |
+| `drafts` | yes | yes | yes | no | no | no |
+| `assisted` | yes | yes | yes | yes | yes, with `confirmed:true` | no |
+| `full` (the default) | yes | yes | yes | yes | yes | yes |
+
+A mode only sets where the individual flags start. Any flag you set explicitly still wins (for example `PROTONMAIL_MODE=drafts` with `PROTONMAIL_ALLOW_SEND=true` allows sending). An unknown value is an error that lists the valid ones. The mode in force is shown by `get_runtime_status`.
 
 All flags work in both the MCP server and CLI:
 

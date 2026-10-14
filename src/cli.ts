@@ -12,6 +12,7 @@ import { SimpleIMAPService } from "./services/simple-imap-service.js";
 import type { EmailSummary, ProtonMailConfig, SearchEmailsInput } from "./types/index.js";
 import { ensureDestructiveConfirmed, ensureEmailActionAllowed, ensureMailboxWriteAllowed, sanitizeRuntimeConfig } from "./utils/runtime-policy.js";
 import { isValidEmail, parseEmails } from "./utils/helpers.js";
+import { buildSchedule, defaultSchedulerSystem, parseTimeOfDay, SCHEDULER_SYSTEMS, type SchedulerSystem } from "./utils/schedule-templates.js";
 import { getClaudeDesktopInstallStatus } from "./scripts/check-claude-desktop.js";
 import { installClaudeDesktopConfig } from "./scripts/install-claude-desktop.js";
 import { runClaudeDesktopSetupWizard } from "./scripts/setup-claude-desktop.js";
@@ -262,6 +263,7 @@ const BULK_FILTER_FLAGS = ["from", "subject", "since", "before"];
 
 export const COMMAND_SPECS: Record<string, CommandSpec> = {
   completion: { usage: "completion <zsh|bash|fish>", description: "Print a shell completion script for the commands and their flags", flags: [] },
+  schedule: { usage: "schedule [--at HH:MM] [--system launchd|systemd|cron|schtasks] [--output <file>] [--password-file <file>]", description: "Print the scheduler definition that runs `digest` every day, with the commands to switch it on (installs nothing)", flags: ["at", "system", "output", "password-file"] },
   help: { usage: "help [command]", description: "Show the command list, or the help for one command", flags: [] },
   version: { usage: "version", description: "Print the version and exit", flags: [] },
   "setup-claude-desktop": { usage: "setup-claude-desktop", description: "Run the Claude Desktop setup wizard (works from any install)", flags: [] },
@@ -2153,6 +2155,9 @@ export async function main(): Promise<void> {
     case "completion":
       process.stdout.write(completionScript(parsed.positionals[0] ?? ""));
       return;
+    case "schedule":
+      process.stdout.write(scheduleText(parsed));
+      return;
     case "-v":
     case "version":
       process.stdout.write(`proton-mail-bridge-client ${await getPkgVersion()}\n`);
@@ -2355,6 +2360,45 @@ export async function main(): Promise<void> {
       throw new Error(`Unknown command: ${parsed.command}`);
     }
   }
+}
+
+// `schedule`: builds the text only; nothing is installed or written.
+function scheduleText(parsed: ParsedCliArgs): string {
+  const { hour, minute } = parseTimeOfDay(getStringFlag(parsed.flags, "at") ?? "08:00");
+  const requested = getStringFlag(parsed.flags, "system");
+  if (requested !== undefined && !SCHEDULER_SYSTEMS.includes(requested as SchedulerSystem)) {
+    throw new CliUsageError(`--system must be one of: ${SCHEDULER_SYSTEMS.join(", ")} (got "${requested}").`);
+  }
+  const system = (requested as SchedulerSystem | undefined) ?? defaultSchedulerSystem(process.platform);
+  const home = process.env.HOME ?? process.env.USERPROFILE ?? "~";
+  const output = getStringFlag(parsed.flags, "output") ?? `${home}/proton-mail-brief.txt`;
+  const passwordFile = getStringFlag(parsed.flags, "password-file") ?? `${home}/.proton-mail-bridge-password`;
+  const result = buildSchedule({
+    system,
+    hour,
+    minute,
+    node: process.execPath,
+    script: fileURLToPath(import.meta.url),
+    output,
+    username: process.env.PROTONMAIL_USERNAME?.trim() || "you@proton.me",
+    passwordFile,
+  });
+  const lines = [
+    result.body,
+    "",
+    ...(result.file ? [`# ${result.file.path}`, result.file.content] : []),
+    "Before you switch it on:",
+    `  1. Put your Bridge password in ${passwordFile} (one line) and restrict it: chmod 600 ${passwordFile}`,
+    `  2. Check the username in the definition above (${process.env.PROTONMAIL_USERNAME ? "taken from PROTONMAIL_USERNAME" : "replace you@proton.me"}).`,
+    "",
+    "Switch on:",
+    ...result.enable.map((command) => `  ${command}`),
+    "",
+    "Switch off:",
+    ...result.disable.map((command) => `  ${command}`),
+    "",
+  ];
+  return lines.join("\n");
 }
 
 // A reader that closed the pipe early reports EPIPE on Linux and Windows; macOS reports the same thing as ENOTCONN

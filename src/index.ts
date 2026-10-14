@@ -12,12 +12,15 @@ import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js"
 import {
   CallToolRequestSchema,
   ErrorCode,
+  GetPromptRequestSchema,
+  ListPromptsRequestSchema,
   ListToolsRequestSchema,
   ListResourcesRequestSchema,
   McpError,
   ReadResourceRequestSchema,
 } from "@modelcontextprotocol/sdk/types.js";
 import { isMainModule } from "./is-main.js";
+import { findMailPrompt, MAIL_PROMPTS } from "./utils/mail-prompts.js";
 import { AnalyticsService } from "./services/analytics-service.js";
 import { AuditService } from "./services/audit-service.js";
 import { DraftStoreService, applyBodyEdits, draftSyncFingerprint, type BodyEdit } from "./services/draft-store-service.js";
@@ -34,6 +37,7 @@ import type {
   CitationSource,
   DraftRecord,
   EmailAction,
+  SafetyMode,
   EmailAddress,
   EmailAttachmentInput,
   EmailDetail,
@@ -4033,10 +4037,33 @@ function validatePortEnv(name: string): void {
   }
 }
 
-function parseAllowedActionsEnv(name: string): EmailAction[] {
+// One switch for the safety flags. A mode only sets the starting point: any of the individual variables that is set
+// explicitly still wins, so a mode never takes a setting away that someone chose on purpose.
+const SAFETY_MODES: Record<SafetyMode, { readOnly?: boolean; allowSend?: boolean; confirmDestructive?: boolean; allowedActions?: EmailAction[] }> = {
+  // Browse and search only: nothing is written, nothing is sent.
+  "read-only": { readOnly: true },
+  // Drafts and flags; no sending, and no moving, archiving or deleting.
+  drafts: { allowSend: false, allowedActions: ["mark_read", "mark_unread", "star", "unstar"] },
+  // Everything except permanent deletion, and every send or delete asks for confirmed:true.
+  assisted: { confirmDestructive: true, allowedActions: ALL_EMAIL_ACTIONS.filter((action) => action !== "delete") },
+  full: {},
+};
+
+function parseSafetyModeEnv(name: string): SafetyMode | undefined {
+  const raw = process.env[name]?.trim().toLowerCase();
+  if (!raw) {
+    return undefined;
+  }
+  if (Object.hasOwn(SAFETY_MODES, raw)) {
+    return raw as SafetyMode;
+  }
+  throw new Error(`${name} must be one of: ${Object.keys(SAFETY_MODES).join(", ")} (got "${raw}").`);
+}
+
+function parseAllowedActionsEnv(name: string, fallback: EmailAction[] = ALL_EMAIL_ACTIONS): EmailAction[] {
   const configured = parseListValues(process.env[name]);
   if (configured.length === 0) {
-    return [...ALL_EMAIL_ACTIONS];
+    return [...fallback];
   }
 
   const allowed = configured.filter((value): value is EmailAction =>
@@ -4172,8 +4199,10 @@ export function buildConfigFromEnv(): ProtonMailConfig {
   validatePortEnv("PROTONMAIL_IMAP_PORT");
   const imapPort = parseIntegerEnv("PROTONMAIL_IMAP_PORT", 1143, 1, 65_535);
   const debug = parseBooleanEnv("DEBUG", false);
-  const readOnly = parseBooleanEnv("PROTONMAIL_READ_ONLY", false);
-  const allowSend = parseBooleanEnv("PROTONMAIL_ALLOW_SEND", !readOnly);
+  const mode = parseSafetyModeEnv("PROTONMAIL_MODE");
+  const preset = mode ? SAFETY_MODES[mode] : {};
+  const readOnly = parseBooleanEnv("PROTONMAIL_READ_ONLY", preset.readOnly ?? false);
+  const allowSend = parseBooleanEnv("PROTONMAIL_ALLOW_SEND", preset.allowSend ?? !readOnly);
   const allowRemoteDraftSync = parseBooleanEnv(
     "PROTONMAIL_ALLOW_REMOTE_DRAFT_SYNC",
     !readOnly,
@@ -4182,7 +4211,7 @@ export function buildConfigFromEnv(): ProtonMailConfig {
   const syncInterval = parseIntegerEnv("PROTONMAIL_SYNC_INTERVAL_MINUTES", 5, 1, 24 * 60);
   const idleWatchEnabled = parseBooleanEnv("PROTONMAIL_IDLE_WATCH", autoSync);
   const idleMaxSeconds = parseIntegerEnv("PROTONMAIL_IDLE_MAX_SECONDS", 30, 5, 300);
-  const confirmDestructive = parseBooleanEnv("PROTONMAIL_CONFIRM_DESTRUCTIVE", false);
+  const confirmDestructive = parseBooleanEnv("PROTONMAIL_CONFIRM_DESTRUCTIVE", preset.confirmDestructive ?? false);
   const allowEmptyFolder = parseBooleanEnv("PROTONMAIL_ALLOW_EMPTY_FOLDER", false);
   const restrictOutboundToSelf = parseBooleanEnv("PROTONMAIL_RESTRICT_OUTBOUND_TO_SELF", false);
   const allowFileDownloadDir = process.env.PROTONMAIL_ALLOW_FILE_DOWNLOAD_DIR?.trim() || undefined;
@@ -4231,10 +4260,11 @@ export function buildConfigFromEnv(): ProtonMailConfig {
     syncInterval,
     accounts,
     runtime: {
+      ...(mode ? { mode } : {}),
       readOnly,
       allowSend,
       allowRemoteDraftSync,
-      allowedActions: parseAllowedActionsEnv("PROTONMAIL_ALLOWED_ACTIONS"),
+      allowedActions: parseAllowedActionsEnv("PROTONMAIL_ALLOWED_ACTIONS", preset.allowedActions),
       startupSync: parseBooleanEnv("PROTONMAIL_STARTUP_SYNC", autoSync),
       // Comma-separated; Sent is included by default so pendingOn/digest/follow-up
       // candidates don't misreport threads that were already answered — IDLE still
@@ -4496,11 +4526,38 @@ export function createServer(
       capabilities: {
         tools: {},
         resources: {},
+        prompts: {},
       },
     },
   );
 
   server.setRequestHandler(ListToolsRequestSchema, async () => ({ tools: listedTools() }));
+
+  server.setRequestHandler(ListPromptsRequestSchema, async () => ({
+    prompts: MAIL_PROMPTS.map(({ name, title, description, arguments: promptArguments }) => ({
+      name,
+      title,
+      description,
+      ...(promptArguments ? { arguments: promptArguments } : {}),
+    })),
+  }));
+
+  server.setRequestHandler(GetPromptRequestSchema, async (request) => {
+    const prompt = findMailPrompt(request.params.name);
+    if (!prompt) {
+      throw new McpError(ErrorCode.InvalidParams, `Unknown prompt "${request.params.name}". Available: ${MAIL_PROMPTS.map((entry) => entry.name).join(", ")}.`);
+    }
+    const provided = request.params.arguments ?? {};
+    for (const argument of prompt.arguments ?? []) {
+      if (argument.required && !String(provided[argument.name] ?? "").trim()) {
+        throw new McpError(ErrorCode.InvalidParams, `Prompt "${prompt.name}" needs the argument "${argument.name}": ${argument.description}`);
+      }
+    }
+    return {
+      description: prompt.description,
+      messages: [{ role: "user" as const, content: { type: "text" as const, text: prompt.render(provided) } }],
+    };
+  });
 
   server.setRequestHandler(ListResourcesRequestSchema, async (request) => {
     const cursor = request.params?.cursor ? Number.parseInt(request.params.cursor, 10) : 0;
