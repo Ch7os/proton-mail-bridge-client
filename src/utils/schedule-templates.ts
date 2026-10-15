@@ -141,3 +141,36 @@ WantedBy=timers.target
     disable: [`schtasks /Delete /TN "Proton Mail digest" /F`],
   };
 }
+
+// A path on the user's PATH that leads to the same file as `target`, if there is one. Homebrew's real Node lives in
+// a directory named after its version (.../Cellar/node/26.11.1/bin/node) while /opt/homebrew/bin/node is the link
+// that survives an upgrade; a scheduler job should hold the link. Without a match the target itself is used.
+export function findStableAlias(options: {
+  target: string;
+  names: string[];
+  dirs: string[];
+  realpath: (path: string) => string;
+  isExecutable: (path: string) => boolean;
+  separator?: string;
+}): string | undefined {
+  const separator = options.separator ?? "/";
+  let targetReal: string;
+  try {
+    targetReal = options.realpath(options.target);
+  } catch {
+    return undefined;
+  }
+  for (const dir of options.dirs) {
+    // A relative or empty PATH entry means "the current directory" and would not mean the same thing to a scheduler.
+    if (!dir || !(dir.startsWith("/") || /^[A-Za-z]:[\\/]/.test(dir))) continue;
+    for (const name of options.names) {
+      const candidate = `${dir.replace(/[\\/]+$/, "")}${separator}${name}`;
+      try {
+        if (options.isExecutable(candidate) && options.realpath(candidate) === targetReal) return candidate;
+      } catch {
+        // Not there, or not readable: try the next one.
+      }
+    }
+  }
+  return undefined;
+}

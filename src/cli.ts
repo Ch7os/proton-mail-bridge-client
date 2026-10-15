@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 
 import { execFile } from "node:child_process";
+import { accessSync, constants as fsConstants, realpathSync } from "node:fs";
 import { readFile } from "node:fs/promises";
 import { promisify } from "node:util";
 import { fileURLToPath } from "node:url";
@@ -12,7 +13,7 @@ import { SimpleIMAPService } from "./services/simple-imap-service.js";
 import type { EmailSummary, ProtonMailConfig, SearchEmailsInput } from "./types/index.js";
 import { ensureDestructiveConfirmed, ensureEmailActionAllowed, ensureMailboxWriteAllowed, sanitizeRuntimeConfig } from "./utils/runtime-policy.js";
 import { isValidEmail, parseEmails } from "./utils/helpers.js";
-import { buildSchedule, defaultSchedulerSystem, parseTimeOfDay, SCHEDULER_SYSTEMS, type SchedulerSystem } from "./utils/schedule-templates.js";
+import { buildSchedule, defaultSchedulerSystem, findStableAlias, parseTimeOfDay, SCHEDULER_SYSTEMS, type SchedulerSystem } from "./utils/schedule-templates.js";
 import { getClaudeDesktopInstallStatus } from "./scripts/check-claude-desktop.js";
 import { installClaudeDesktopConfig } from "./scripts/install-claude-desktop.js";
 import { runClaudeDesktopSetupWizard } from "./scripts/setup-claude-desktop.js";
@@ -2362,6 +2363,39 @@ export async function main(): Promise<void> {
   }
 }
 
+// The path of this Node and of this CLI that a scheduler job should hold: the link on PATH when there is one
+// (Homebrew's /opt/homebrew/bin/node), because the real path carries the version and breaks on an upgrade.
+function pathDirectories(): string[] {
+  return (process.env.PATH ?? "").split(process.platform === "win32" ? ";" : ":");
+}
+
+function stableAlias(target: string, names: string[], access: number): string {
+  return (
+    findStableAlias({
+      target,
+      names,
+      dirs: pathDirectories(),
+      realpath: (path) => realpathSync(path),
+      isExecutable: (path) => {
+        accessSync(path, access);
+        return true;
+      },
+      separator: process.platform === "win32" ? "\\" : "/",
+    }) ?? target
+  );
+}
+
+function stableNodePath(): string {
+  return stableAlias(process.execPath, process.platform === "win32" ? ["node.exe"] : ["node"], fsConstants.X_OK);
+}
+
+function stableScriptPath(): string {
+  const script = fileURLToPath(import.meta.url);
+  // On Windows the bin entry is a .cmd shim, which node cannot run as a script.
+  // Node only has to read the script, so readable is enough (a checkout's dist/cli.js has no execute bit).
+  return process.platform === "win32" ? script : stableAlias(script, ["proton-mail-bridge-client"], fsConstants.R_OK);
+}
+
 // `schedule`: builds the text only; nothing is installed or written.
 function scheduleText(parsed: ParsedCliArgs): string {
   const { hour, minute } = parseTimeOfDay(getStringFlag(parsed.flags, "at") ?? "08:00");
@@ -2377,8 +2411,8 @@ function scheduleText(parsed: ParsedCliArgs): string {
     system,
     hour,
     minute,
-    node: process.execPath,
-    script: fileURLToPath(import.meta.url),
+    node: stableNodePath(),
+    script: stableScriptPath(),
     output,
     username: process.env.PROTONMAIL_USERNAME?.trim() || "you@proton.me",
     passwordFile,

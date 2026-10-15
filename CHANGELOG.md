@@ -2,6 +2,10 @@
 
 All notable changes to this project are documented here.
 
+## [Unreleased]
+
+`schedule` no longer writes the version-pinned path of Node into the scheduler definition. It uses the link on your `PATH` that leads to the same file (Homebrew's `/opt/homebrew/bin/node` instead of `.../Cellar/node/26.11.1/bin/node`), and likewise for the CLI's own script, so the job survives a Node upgrade. Without such a link the real paths are used as before.
+
 ## [2.9.1] — 2026-10-15
 
 Two fixes from a contributor, Ch7os, found on a real 96,600-message mailbox with mail imported from another provider, and one follow-up.

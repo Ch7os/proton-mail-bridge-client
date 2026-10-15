@@ -222,7 +222,7 @@ proton-mail-bridge-client schedule --at 07:30 --system cron --output ~/brief.txt
 | `--output <file>` | Where each run writes the digest (default `~/proton-mail-brief.txt`) |
 | `--password-file <file>` | A file holding your Bridge password, mode 600 (default `~/.proton-mail-bridge-password`) |
 
-The password is never written into the scheduler definition: the job reads it from the file through `PROTONMAIL_PASSWORD_FILE`. The job uses absolute paths to this Node and this CLI, so a scheduler's minimal `PATH` does not matter; if you move or upgrade the install, run `schedule` again.
+The password is never written into the scheduler definition: the job reads it from the file through `PROTONMAIL_PASSWORD_FILE`. The job uses absolute paths to this Node and this CLI, so a scheduler's minimal `PATH` does not matter. Where a link on your `PATH` leads to the same file (Homebrew's `/opt/homebrew/bin/node`, an npm global's `proton-mail-bridge-client`), the definition holds that link, which survives an upgrade; the real path carries the version (`.../Cellar/node/26.11.1/bin/node`) and would not. A version manager such as nvm has no such link, so after switching the Node version, run `schedule` again.
 
 ## Shell completion
 

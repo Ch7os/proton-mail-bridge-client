@@ -1,7 +1,10 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
-import { buildSchedule, defaultSchedulerSystem, parseTimeOfDay, SCHEDULER_SYSTEMS } from "../dist/utils/schedule-templates.js";
+import { mkdtemp, rm, symlink } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join, resolve } from "node:path";
+import { buildSchedule, defaultSchedulerSystem, findStableAlias, parseTimeOfDay, SCHEDULER_SYSTEMS } from "../dist/utils/schedule-templates.js";
 
 // `schedule` prints the definition that runs `digest` every day. It builds text only; the password is never in it.
 
@@ -63,4 +66,52 @@ test("the CLI command prints, exits 0, writes nothing of its own and refuses a b
   const badSystem = await run(["--system", "yolo"]);
   assert.equal(badSystem.code, 2);
   assert.match(badSystem.err, /--system must be one of/);
+});
+
+// A scheduler job should hold the link that survives an upgrade (Homebrew: /opt/homebrew/bin/node), not the real path
+// that carries the version (.../Cellar/node/26.11.1/bin/node).
+
+const CELLAR = "/opt/homebrew/Cellar/node/26.11.1/bin/node";
+const fakeFs = (links) => ({
+  realpath: (path) => { if (!(path in links)) throw new Error("ENOENT"); return links[path]; },
+  isExecutable: (path) => path in links,
+});
+
+test("the link on PATH that leads to the same file is used, the first one wins", () => {
+  const fs = fakeFs({
+    [CELLAR]: CELLAR,
+    "/opt/homebrew/bin/node": CELLAR,
+    "/usr/local/bin/node": CELLAR,
+    "/usr/bin/node": "/usr/bin/node-other",
+  });
+  assert.equal(findStableAlias({ target: CELLAR, names: ["node"], dirs: ["/usr/bin", "/opt/homebrew/bin", "/usr/local/bin"], ...fs }), "/opt/homebrew/bin/node");
+  assert.equal(findStableAlias({ target: CELLAR, names: ["node"], dirs: ["/opt/homebrew/bin/"], ...fs }), "/opt/homebrew/bin/node", "a trailing slash is tolerated");
+});
+
+test("a link to another file, a relative or empty PATH entry, and a missing link are all ignored", () => {
+  const fs = fakeFs({ [CELLAR]: CELLAR, "/usr/bin/node": "/usr/bin/node-other", "bin/node": CELLAR, "/node": CELLAR });
+  assert.equal(findStableAlias({ target: CELLAR, names: ["node"], dirs: ["/usr/bin", "", "bin", ".", "/nowhere"], ...fs }), undefined);
+  assert.equal(findStableAlias({ target: "/does/not/exist", names: ["node"], dirs: ["/usr/bin"], ...fs }), undefined);
+});
+
+test("schedule puts the PATH links into the definition, and falls back to the real paths without them", async () => {
+  const dir = await mkdtemp(join(tmpdir(), "schedule-alias-"));
+  try {
+    await symlink(process.execPath, join(dir, "node"));
+    await symlink(resolve("dist/cli.js"), join(dir, "proton-mail-bridge-client"));
+    const run = (path) => new Promise((resolveRun) => {
+      const child = spawn(process.execPath, ["dist/cli.js", "schedule", "--system", "cron"], { env: { ...process.env, PATH: path, PROTONMAIL_USERNAME: "" }, stdio: ["ignore", "pipe", "pipe"] });
+      let out = "";
+      child.stdout.on("data", (chunk) => { out += chunk; });
+      child.on("close", (code) => resolveRun({ code, out }));
+    });
+    const linked = await run(dir);
+    assert.equal(linked.code, 0);
+    assert.ok(linked.out.includes(`'${join(dir, "node")}' '${join(dir, "proton-mail-bridge-client")}' digest`), linked.out.split("\n").find((line) => line.includes("digest")));
+    const bare = await run("");
+    assert.equal(bare.code, 0);
+    assert.ok(bare.out.includes(`'${process.execPath}' '${resolve("dist/cli.js")}' digest`), "without links the real paths are used");
+  } finally {
+    await rm(dir, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 });
+  }
 });
