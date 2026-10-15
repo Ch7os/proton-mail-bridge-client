@@ -2,7 +2,7 @@
 
 All notable changes to this project are documented here.
 
-## [Unreleased]
+## [2.10.0] — 2026-10-15
 
 **`PROTONMAIL_MODE` is now a floor, and the Claude Desktop bundle has a *Safety mode* setting.** In 2.9.0 a flag you set explicitly won over the mode; the bundle always sends read-only and allow-sending explicitly, so a mode picked there would have been ignored. Now the other flags can make a mode stricter but never looser (`drafts` with `PROTONMAIL_ALLOW_SEND=true` still does not send; `assisted` drops `delete` from an allowlist that names it). If you want a combination no mode gives you, leave the mode unset and use the flags. An unfilled `${user_config.mode}` from a host that does not substitute it counts as no mode.
 
