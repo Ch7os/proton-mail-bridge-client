@@ -22,7 +22,7 @@ For someone who uses Proton Mail and Claude Desktop and does not want to touch a
    | Linux | `…-linux-x64.mcpb` (or `…-linux-arm64.mcpb` on ARM) |
 
 4. **Open the file.** Claude Desktop asks for your Proton address and the Bridge password. Leave the other settings as they are; the defaults match a standard Bridge install.
-5. **For your first try, tick "read-only"** in those settings. Claude can then search and read your mail but cannot send, draft, move or delete anything. You can switch it off later. (If you configure by hand: `PROTONMAIL_MODE=read-only`, see the [README](../README.md#one-switch-protonmail_mode).)
+5. **For your first try, type `read-only` into "Safety mode"** in those settings (or tick "Read-only mode"). Claude can then search and read your mail but cannot send, draft, move or delete anything. You can change it later; `drafts` also lets it write drafts and flag mail without ever sending. (If you configure by hand: `PROTONMAIL_MODE=read-only`, see the [README](../README.md#one-switch-protonmail_mode).)
 6. **Check it works.** Ask Claude: *"Run the Proton Mail doctor."* It checks that Bridge is reachable and your password is right, and says what to fix if not.
 
 ## What to ask first

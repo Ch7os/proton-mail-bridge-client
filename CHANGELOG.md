@@ -4,6 +4,8 @@ All notable changes to this project are documented here.
 
 ## [Unreleased]
 
+**`PROTONMAIL_MODE` is now a floor, and the Claude Desktop bundle has a *Safety mode* setting.** In 2.9.0 a flag you set explicitly won over the mode; the bundle always sends read-only and allow-sending explicitly, so a mode picked there would have been ignored. Now the other flags can make a mode stricter but never looser (`drafts` with `PROTONMAIL_ALLOW_SEND=true` still does not send; `assisted` drops `delete` from an allowlist that names it). If you want a combination no mode gives you, leave the mode unset and use the flags. An unfilled `${user_config.mode}` from a host that does not substitute it counts as no mode.
+
 `schedule` no longer writes the version-pinned path of Node into the scheduler definition. It uses the link on your `PATH` that leads to the same file (Homebrew's `/opt/homebrew/bin/node` instead of `.../Cellar/node/26.11.1/bin/node`), and likewise for the CLI's own script, so the job survives a Node upgrade. Without such a link the real paths are used as before.
 
 ## [2.9.1] — 2026-10-15

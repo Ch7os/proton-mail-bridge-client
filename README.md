@@ -449,7 +449,7 @@ If you would rather not combine the flags below yourself, pick how much the assi
 | `assisted` | yes | yes | yes | yes | yes, with `confirmed:true` | no |
 | `full` (the default) | yes | yes | yes | yes | yes | yes |
 
-A mode only sets where the individual flags start. Any flag you set explicitly still wins (for example `PROTONMAIL_MODE=drafts` with `PROTONMAIL_ALLOW_SEND=true` allows sending). An unknown value is an error that lists the valid ones. The mode in force is shown by `get_runtime_status`.
+A mode is a floor: the individual flags below can make things stricter (`PROTONMAIL_MODE=full` with `PROTONMAIL_READ_ONLY=true` is read-only; `assisted` with `PROTONMAIL_ALLOWED_ACTIONS=mark_read` allows only that) but never looser (`drafts` with `PROTONMAIL_ALLOW_SEND=true` still does not send). If you want a combination a mode does not give you, leave `PROTONMAIL_MODE` unset and use the flags. An unknown value is an error that lists the valid ones. The mode in force is shown by `get_runtime_status`, and the Claude Desktop bundle has a *Safety mode* setting for it.
 
 All flags work in both the MCP server and CLI:
 

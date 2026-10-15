@@ -4037,8 +4037,9 @@ function validatePortEnv(name: string): void {
   }
 }
 
-// One switch for the safety flags. A mode only sets the starting point: any of the individual variables that is set
-// explicitly still wins, so a mode never takes a setting away that someone chose on purpose.
+// One switch for the safety flags. A mode is a floor: the individual variables can make things stricter, never
+// looser. The Claude Desktop bundle always sends read-only and allow-sending explicitly, so a mode that an explicit
+// value could loosen would be ignored for exactly the people who pick it there.
 const SAFETY_MODES: Record<SafetyMode, { readOnly?: boolean; allowSend?: boolean; confirmDestructive?: boolean; allowedActions?: EmailAction[] }> = {
   // Browse and search only: nothing is written, nothing is sent.
   "read-only": { readOnly: true },
@@ -4051,7 +4052,8 @@ const SAFETY_MODES: Record<SafetyMode, { readOnly?: boolean; allowSend?: boolean
 
 function parseSafetyModeEnv(name: string): SafetyMode | undefined {
   const raw = process.env[name]?.trim().toLowerCase();
-  if (!raw) {
+  // An unfilled "${user_config.mode}" from a host that did not substitute it is "not set", not a typo to fail on.
+  if (!raw || raw.startsWith("${")) {
     return undefined;
   }
   if (Object.hasOwn(SAFETY_MODES, raw)) {
@@ -4060,10 +4062,10 @@ function parseSafetyModeEnv(name: string): SafetyMode | undefined {
   throw new Error(`${name} must be one of: ${Object.keys(SAFETY_MODES).join(", ")} (got "${raw}").`);
 }
 
-function parseAllowedActionsEnv(name: string, fallback: EmailAction[] = ALL_EMAIL_ACTIONS): EmailAction[] {
+function parseAllowedActionsEnv(name: string): EmailAction[] {
   const configured = parseListValues(process.env[name]);
   if (configured.length === 0) {
-    return [...fallback];
+    return [...ALL_EMAIL_ACTIONS];
   }
 
   const allowed = configured.filter((value): value is EmailAction =>
@@ -4201,8 +4203,8 @@ export function buildConfigFromEnv(): ProtonMailConfig {
   const debug = parseBooleanEnv("DEBUG", false);
   const mode = parseSafetyModeEnv("PROTONMAIL_MODE");
   const preset = mode ? SAFETY_MODES[mode] : {};
-  const readOnly = parseBooleanEnv("PROTONMAIL_READ_ONLY", preset.readOnly ?? false);
-  const allowSend = parseBooleanEnv("PROTONMAIL_ALLOW_SEND", preset.allowSend ?? !readOnly);
+  const readOnly = (preset.readOnly ?? false) || parseBooleanEnv("PROTONMAIL_READ_ONLY", false);
+  const allowSend = (preset.allowSend ?? true) && parseBooleanEnv("PROTONMAIL_ALLOW_SEND", !readOnly);
   const allowRemoteDraftSync = parseBooleanEnv(
     "PROTONMAIL_ALLOW_REMOTE_DRAFT_SYNC",
     !readOnly,
@@ -4211,7 +4213,7 @@ export function buildConfigFromEnv(): ProtonMailConfig {
   const syncInterval = parseIntegerEnv("PROTONMAIL_SYNC_INTERVAL_MINUTES", 5, 1, 24 * 60);
   const idleWatchEnabled = parseBooleanEnv("PROTONMAIL_IDLE_WATCH", autoSync);
   const idleMaxSeconds = parseIntegerEnv("PROTONMAIL_IDLE_MAX_SECONDS", 30, 5, 300);
-  const confirmDestructive = parseBooleanEnv("PROTONMAIL_CONFIRM_DESTRUCTIVE", preset.confirmDestructive ?? false);
+  const confirmDestructive = (preset.confirmDestructive ?? false) || parseBooleanEnv("PROTONMAIL_CONFIRM_DESTRUCTIVE", false);
   const allowEmptyFolder = parseBooleanEnv("PROTONMAIL_ALLOW_EMPTY_FOLDER", false);
   const restrictOutboundToSelf = parseBooleanEnv("PROTONMAIL_RESTRICT_OUTBOUND_TO_SELF", false);
   const allowFileDownloadDir = process.env.PROTONMAIL_ALLOW_FILE_DOWNLOAD_DIR?.trim() || undefined;
@@ -4264,7 +4266,9 @@ export function buildConfigFromEnv(): ProtonMailConfig {
       readOnly,
       allowSend,
       allowRemoteDraftSync,
-      allowedActions: parseAllowedActionsEnv("PROTONMAIL_ALLOWED_ACTIONS", preset.allowedActions),
+      allowedActions: parseAllowedActionsEnv("PROTONMAIL_ALLOWED_ACTIONS").filter(
+        (action) => !preset.allowedActions || preset.allowedActions.includes(action),
+      ),
       startupSync: parseBooleanEnv("PROTONMAIL_STARTUP_SYNC", autoSync),
       // Comma-separated; Sent is included by default so pendingOn/digest/follow-up
       // candidates don't misreport threads that were already answered — IDLE still

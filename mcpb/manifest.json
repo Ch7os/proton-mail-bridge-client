@@ -22,7 +22,9 @@
     "entry_point": "server/index.js",
     "mcp_config": {
       "command": "node",
-      "args": ["${__dirname}/server/index.js"],
+      "args": [
+        "${__dirname}/server/index.js"
+      ],
       "env": {
         "PROTONMAIL_USERNAME": "${user_config.protonmail_username}",
         "PROTONMAIL_PASSWORD": "${user_config.protonmail_password}",
@@ -30,6 +32,7 @@
         "PROTONMAIL_IMAP_PORT": "${user_config.imap_port}",
         "PROTONMAIL_SMTP_HOST": "${user_config.smtp_host}",
         "PROTONMAIL_SMTP_PORT": "${user_config.smtp_port}",
+        "PROTONMAIL_MODE": "${user_config.mode}",
         "PROTONMAIL_READ_ONLY": "${user_config.read_only}",
         "PROTONMAIL_ALLOW_SEND": "${user_config.allow_send}",
         "PROTONMAIL_SIGNATURE": "${user_config.signature}",
@@ -84,6 +87,12 @@
       "default": 1025,
       "min": 1,
       "max": 65535,
+      "required": false
+    },
+    "mode": {
+      "type": "string",
+      "title": "Safety mode",
+      "description": "Optional. One of: read-only (browse and search only), drafts (also write drafts and flag mail, never send or move), assisted (everything except permanent delete; every send asks for confirmation), full. Leave empty to use the two settings below. A mode is a floor: the settings below can make it stricter, never looser.",
       "required": false
     },
     "read_only": {
