@@ -693,7 +693,25 @@ function createParsedAttachmentId(
   attachment: NonNullable<ParsedMail["attachments"]>[number],
   index: number,
 ): string {
-  return attachment.checksum || attachment.cid || `attachment-${index + 1}`;
+  return attachment.checksum || attachmentHeaderStrings(attachment).cid || `attachment-${index + 1}`;
+}
+
+// The header-derived fields of a parsed attachment, as strings (or undefined when absent). mailparser types them
+// as strings, but a malformed message can hand over an object or an array; reducing them once here means
+// classification, lowercasing, storing and filtering downstream never see anything else.
+function attachmentHeaderStrings(attachment: NonNullable<ParsedMail["attachments"]>[number]): {
+  filename: string | undefined;
+  contentType: string | undefined;
+  disposition: string | undefined;
+  cid: string | undefined;
+} {
+  const text = (value: unknown) => mimeHeaderString(value) || undefined;
+  return {
+    filename: text(attachment.filename),
+    contentType: text(attachment.contentType),
+    disposition: text(attachment.contentDisposition),
+    cid: text(attachment.cid),
+  };
 }
 
 // mailparser structures several headers as objects rather than strings:
@@ -1890,7 +1908,7 @@ export class SimpleIMAPService {
       }
       if (
         input.contentType &&
-        (attachment.contentType || "").toLowerCase() !== input.contentType.toLowerCase()
+        mimeHeaderString(attachment.contentType).toLowerCase() !== input.contentType.toLowerCase()
       ) {
         skipped += 1;
         continue;
@@ -4347,22 +4365,18 @@ export class SimpleIMAPService {
 
   private mapParsedAttachments(parsed?: ParsedMail): EmailDetail["attachments"] {
     return (parsed?.attachments ?? []).map((attachment, index) => {
-      const classification = classifyAttachment({
-        filename: attachment.filename,
-        contentType: attachment.contentType,
-        disposition: attachment.contentDisposition,
-        cid: attachment.cid,
-      });
+      const headers = attachmentHeaderStrings(attachment);
+      const classification = classifyAttachment(headers);
 
       return {
         id: createParsedAttachmentId(attachment, index),
-        filename: attachment.filename,
-        contentType: attachment.contentType,
+        filename: headers.filename,
+        contentType: headers.contentType,
         size: attachment.size,
-        disposition: attachment.contentDisposition,
-        cid: attachment.cid,
+        disposition: headers.disposition,
+        cid: headers.cid,
         checksum: attachment.checksum,
-        isInline: attachment.contentDisposition === "inline",
+        isInline: headers.disposition === "inline",
         kind: classification.kind,
         isCalendarInvite: classification.isCalendarInvite,
         isSignature: classification.isSignature,
@@ -4373,24 +4387,22 @@ export class SimpleIMAPService {
   private mapParsedAttachmentsWithContent(
     parsed: ParsedMail,
   ): Array<EmailDetail["attachments"][number] & { content: Buffer; checksum?: string; charset?: string }> {
-    return (parsed.attachments ?? []).map((attachment, index) => ({
-      id: createParsedAttachmentId(attachment, index),
-      filename: attachment.filename,
-      contentType: attachment.contentType,
-      size: attachment.size,
-      disposition: attachment.contentDisposition,
-      cid: attachment.cid,
-      checksum: attachment.checksum,
-      isInline: attachment.contentDisposition === "inline",
-      ...classifyAttachment({
-        filename: attachment.filename,
-        contentType: attachment.contentType,
-        disposition: attachment.contentDisposition,
-        cid: attachment.cid,
-      }),
-      content: attachment.content,
-      charset: (attachment.headers?.get?.("content-type") as { params?: { charset?: string } } | undefined)?.params?.charset,
-    }));
+    return (parsed.attachments ?? []).map((attachment, index) => {
+      const headers = attachmentHeaderStrings(attachment);
+      return {
+        id: createParsedAttachmentId(attachment, index),
+        filename: headers.filename,
+        contentType: headers.contentType,
+        size: attachment.size,
+        disposition: headers.disposition,
+        cid: headers.cid,
+        checksum: attachment.checksum,
+        isInline: headers.disposition === "inline",
+        ...classifyAttachment(headers),
+        content: attachment.content,
+        charset: (attachment.headers?.get?.("content-type") as { params?: { charset?: string } } | undefined)?.params?.charset,
+      };
+    });
   }
 
   private mapHeaders(parsed?: ParsedMail): Record<string, unknown> {

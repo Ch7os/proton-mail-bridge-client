@@ -2,6 +2,14 @@
 
 All notable changes to this project are documented here.
 
+## [2.9.1] — 2026-10-15
+
+Two fixes from a contributor, Ch7os, found on a real 96,600-message mailbox with mail imported from another provider, and one follow-up.
+
+- **A background sync no longer resets a running backfill** (#34). The incremental plan stored the checkpoint without `backfilledToUid`, so every background tick sent the next `sync_emails { full: true }` back to the newest UIDs; on a large folder the backfill never finished (about 746,000 fetches in eight hours).
+- **An attachment header that is not a string no longer aborts the folder's index sync** (#35). For some malformed legacy messages mailparser hands over an object or array for `contentType`, and `.toLowerCase()` threw on every sync tick (88 times in two hours).
+- **Follow-up:** the two attachment mappers now reduce `filename`, `contentType`, `disposition` and `cid` to strings once, where they are read, so what is stored, listed and filtered later never holds an object. The same crash was still reachable through the content-type filter of `save_attachments`.
+
 ## [2.9.0] — 2026-10-14
 
 New: **`PROTONMAIL_MODE`** (`read-only`, `drafts`, `assisted`, `full`) sets the safety flags in one go. It only sets where they start; any flag set explicitly still wins, an unknown value is an error that lists the valid ones, and `get_runtime_status` shows the mode in force. **MCP prompts**: the server now offers seven ready-made workflows (*Morning brief*, *Who is waiting on me*, *Waiting on others*, *Prepare for a meeting*, *Answer calendar invitations*, *Clean up newsletters*, *Draft replies*); each only instructs the assistant and asks before sending or changing anything. **`schedule`** prints the launchd, systemd, cron or Windows task definition that runs `digest` every day, with the commands to switch it on and off; it installs nothing and keeps the password in a file, not in the definition. Also: a step-by-step install guide for people who do not use a terminal (`docs/install-for-non-developers.md`).
