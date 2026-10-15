@@ -94,7 +94,11 @@ test("a link to another file, a relative or empty PATH entry, and a missing link
   assert.equal(findStableAlias({ target: "/does/not/exist", names: ["node"], dirs: ["/usr/bin"], ...fs }), undefined);
 });
 
-test("schedule puts the PATH links into the definition, and falls back to the real paths without them", async () => {
+// Symlinks named like POSIX binaries; on Windows the alias is node.exe and the bin entry is a .cmd shim (the script
+// alias is skipped there on purpose), so this check is POSIX-only. findStableAlias itself is covered above.
+const POSIX_ONLY = { skip: process.platform === "win32" ? "POSIX-only" : false };
+
+test("schedule puts the PATH links into the definition, and falls back to the real paths without them", POSIX_ONLY, async () => {
   const dir = await mkdtemp(join(tmpdir(), "schedule-alias-"));
   try {
     await symlink(process.execPath, join(dir, "node"));
